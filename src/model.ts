@@ -72,8 +72,8 @@ export function parseQuotaResponse(raw: unknown, preferredLimitId: string, now =
 export function remainingColor(window: QuotaWindow): string {
   const low = window.remainingPercent <= 20;
   const medium = window.remainingPercent <= 50;
-  if (window.kind === 'fiveHour') return low ? '#f16f80' : medium ? '#d69a54' : '#a58af5';
-  return low ? '#f16f80' : medium ? '#d6aa4e' : '#4fcaa9';
+  if (window.kind === 'fiveHour') return low ? '#e58091' : medium ? '#94cfe6' : '#a8d7ec';
+  return low ? '#c5687c' : medium ? '#e0939a' : '#f3c1b9';
 }
 
 /** Remaining fraction of the window duration until its next reset. */

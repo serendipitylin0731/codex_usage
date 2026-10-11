@@ -4,6 +4,8 @@
 node_modules/**
 src/**
 *.vsix
+palette-*.svg
+palette-*.png
 tsconfig.json
 package-lock.json
 TASK.md

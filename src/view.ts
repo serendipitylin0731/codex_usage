@@ -67,19 +67,41 @@ document.getElementById('refresh').addEventListener('click', () => vscode.postMe
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag, attrs) { const el=document.createElementNS(NS,tag); for(const [key,val] of Object.entries(attrs)) el.setAttribute(key,String(val)); return el; }
 function resetTime(seconds) { return seconds ? new Date(seconds*1000).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : '未知'; }
-function color(window) { const left=window.remainingPercent; return window.kind==='fiveHour' ? (left<=20?'#f16f80':left<=50?'#d69a54':'#a58af5') : (left<=20?'#f16f80':left<=50?'#d6aa4e':'#4fcaa9'); }
+function quotaColor(window, progress) {
+  const stops=window.kind==='fiveHour' ? ['#4f8ec3','#94cfe6','#d8f1f7'] : ['#c5687c','#e0939a','#f3c1b9'];
+  const position=Math.max(0,Math.min(1,progress))*2;
+  const index=Math.min(1,Math.floor(position)), fraction=position-index;
+  const from=stops[index], to=stops[index+1];
+  const channel=offset=>Math.round(parseInt(from.slice(offset,offset+2),16)*(1-fraction)+parseInt(to.slice(offset,offset+2),16)*fraction).toString(16).padStart(2,'0');
+  return '#'+channel(1)+channel(3)+channel(5);
+}
+function timeColor(window) { return window.kind==='fiveHour' ? '#a8d7ec' : '#f3c1b9'; }
 function timeLeft(window) { if(window.resetsAt===null || window.durationMinutes===null || window.durationMinutes<=0) return null; return Math.max(0,Math.min(100,(window.resetsAt*1000-Date.now())/(window.durationMinutes*60000)*100)); }
 function addArc(group, radius, width, percent, stroke, opacity) {
   if(percent===null || percent<=0) return;
   const circumference=2*Math.PI*radius, length=circumference*Math.min(100,percent)/100;
   group.appendChild(svg('circle',{cx:140,cy:140,r:radius,fill:'none',stroke:stroke,'stroke-width':width,opacity:opacity,'stroke-dasharray':length+' '+circumference}));
 }
+function addQuotaArc(group, window, radius, width) {
+  const circumference=2*Math.PI*radius;
+  const visible=circumference*Math.max(0,Math.min(100,window.remainingPercent))/100;
+  function segment(start,length,opacity) {
+    if(length<=0) return;
+    group.appendChild(svg('circle',{cx:140,cy:140,r:radius,fill:'none',stroke:quotaColor(window,(start+length/2)/circumference),'stroke-width':width,opacity:opacity,'stroke-dasharray':(length+1.2)+' '+circumference,'stroke-dashoffset':-start}));
+  }
+  for(let i=0;i<144;i++) {
+    const start=circumference*i/144, end=circumference*(i+1)/144;
+    segment(start,Math.max(0,Math.min(end,visible)-start),1);
+    const usedStart=Math.max(start,visible);
+    segment(usedStart,end-usedStart,.2);
+  }
+}
 function addRing(root, window, radius, width) {
   const group=svg('g',{transform:'rotate(-90 140 140)'});
-  const ringColor=color(window);
-  // The two solid arcs start at twelve o'clock. Consumed quota and elapsed time remain empty.
-  addArc(group,radius,width,window.remainingPercent,ringColor,1);
-  addArc(group,radius-width/2-5,3,timeLeft(window),ringColor,.85);
+  // Quota changes color around the circumference; the time arc keeps one color.
+  // Both start at twelve o'clock. Consumed quota is dimmed; elapsed time stays empty.
+  addQuotaArc(group,window,radius,width);
+  addArc(group,radius-width/2-5,3,timeLeft(window),timeColor(window),.85);
   root.appendChild(group);
 }
 function render(snapshot,error) {
@@ -90,7 +112,7 @@ function render(snapshot,error) {
   document.getElementById('title').textContent=snapshot.limitName || 'Codex 额度';
   const dashboard=document.createElement('div');dashboard.className='dashboard';
   const chart=document.createElement('div'); chart.className='chart';
-  const graphic=svg('svg',{viewBox:'0 0 280 280','aria-label':'外侧粗线为剩余额度，内侧细线为剩余时间',role:'img'});
+  const graphic=svg('svg',{viewBox:'0 0 280 280','aria-label':'外侧渐变粗圈中亮色表示剩余额度，内侧单色细圈表示剩余时间',role:'img'});
   snapshot.windows.forEach((window,i)=>addRing(graphic,window,i===0?112:82,i===0?17:14));
   chart.appendChild(graphic);
   const center=document.createElement('div'); center.className='center';
@@ -103,7 +125,7 @@ function render(snapshot,error) {
   if(!snapshot.windows.length){ const empty=document.createElement('div');empty.className='empty';empty.textContent='该账户未返回时间窗口额度';legend.appendChild(empty); }
   for(const window of snapshot.windows){
     const row=document.createElement('div');row.className='row';
-    row.style.borderLeftColor=color(window);
+    row.style.borderLeftColor=quotaColor(window,window.remainingPercent/100);
     const name=document.createElement('div');name.className='name';name.textContent=window.label+'额度';
     const value=document.createElement('div');value.className='value';value.textContent='额度剩余 '+Math.round(window.remainingPercent)+'%';
     const reset=document.createElement('div');reset.className='detail';reset.textContent='重置 '+resetTime(window.resetsAt);
