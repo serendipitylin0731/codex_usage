@@ -1,0 +1,58 @@
+{
+  "name": "codex-quota-rings",
+  "displayName": "Codex Quota Rings",
+  "description": "在 VS Code 状态栏和资源管理器查看 Codex 额度、时间进度与重置次数",
+  "version": "0.4.2",
+  "publisher": "local-codex-tools",
+  "private": true,
+  "license": "MIT",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other"],
+  "extensionKind": ["workspace"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "codexQuota.refresh", "title": "Codex 额度：立即刷新", "icon": "$(refresh)" },
+      { "command": "codexQuota.show", "title": "Codex 额度：显示圆环" }
+    ],
+    "views": {
+      "explorer": [
+        { "id": "codexQuota.view", "name": "Codex 额度", "type": "webview", "visibility": "visible" }
+      ]
+    },
+    "configuration": {
+      "title": "Codex 额度圆环",
+      "properties": {
+        "codexQuota.codexPath": {
+          "type": "string",
+          "default": "codex",
+          "description": "Codex CLI 可执行文件路径或命令名。插件运行在当前 VS Code 工作区环境中。"
+        },
+        "codexQuota.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 30,
+          "minimum": 15,
+          "maximum": 600,
+          "description": "自动读取额度的间隔（秒）。"
+        },
+        "codexQuota.limitId": {
+          "type": "string",
+          "default": "codex",
+          "description": "优先显示的额度桶 ID。不存在时自动显示首个可用额度。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "npm run compile && node --test dist/test/*.test.js",
+    "package": "npm run compile && vsce package --no-dependencies --allow-missing-repository -o codex-quota-rings-0.4.2.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.0",
+    "typescript": "^5.9.0"
+  }
+}

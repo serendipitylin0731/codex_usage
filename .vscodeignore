@@ -1,0 +1,11 @@
+.git/**
+.gitignore
+.github/**
+node_modules/**
+src/**
+*.vsix
+tsconfig.json
+package-lock.json
+TASK.md
+dist/**/*.map
+dist/test/**
