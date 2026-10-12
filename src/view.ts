@@ -39,17 +39,16 @@ export class QuotaView implements vscode.WebviewViewProvider {
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 9px 8px 12px; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 12px; }
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  h1 { font-size: 13px; line-height: 1.2; margin: 0; font-weight: 650; }
   button { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); padding: 6px 9px; border-radius: 7px; cursor: pointer; font: inherit; }
   button:hover { background: var(--vscode-button-secondaryHoverBackground); }
-  .dashboard { display: grid; grid-template-columns: minmax(88px, 120px) minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 8px; }
-  .chart { position: relative; width: min(100%, 120px); aspect-ratio: 1; }
+  .dashboard { display: grid; grid-template-columns: minmax(88px, 120px) minmax(0, 1fr); gap: 8px; align-items: center; }
+  .chart { position: relative; width: min(100%, 120px); aspect-ratio: 1; clip-path: circle(50%); cursor: pointer; }
+  .chart:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: -2px; }
   svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
   .center .num { font-size: 22px; font-weight: 730; line-height: 1; letter-spacing: -.05em; }
-  .center .caption { color: var(--vscode-descriptionForeground); margin-top: 2px; text-align: center; font-size: 9px; line-height: 1.1; }
-  .center .expiry { color: var(--vscode-descriptionForeground); font-size: 7px; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 3px; text-align: center; white-space: nowrap; }
+  .center .caption { color: var(--vscode-descriptionForeground); margin-top: 3px; text-align: center; font-size: 9px; line-height: 1.1; }
+  .center .expiry { color: var(--vscode-descriptionForeground); font-size: 7px; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 2px; text-align: center; white-space: nowrap; }
   .legend { display: grid; gap: 8px; min-width: 0; }
   .row { min-width: 0; padding: 2px 0 2px 6px; border-left: 3px solid; }
   .name { font-weight: 650; font-size: 11px; }
@@ -59,16 +58,16 @@ export class QuotaView implements vscode.WebviewViewProvider {
   .help { margin-top: 8px; }
   .help[hidden] { display: none; }
   .empty { text-align: center; padding: 12px 4px; color: var(--vscode-descriptionForeground); line-height: 1.5; }
+  .empty button { display: block; margin: 8px auto 0; }
   @media (max-width: 220px) { .dashboard { grid-template-columns: 88px minmax(0, 1fr); gap: 4px; } }
 </style></head><body>
-<div class="top"><h1 id="title">Codex 额度</h1><button id="refresh" title="立即刷新">↻</button></div>
 <div id="content" class="empty">正在读取 Codex 额度…</div>
 <div id="error" class="error" role="status"></div>
 <div id="help" class="help" hidden><button id="faq" type="button">常见问题与解决方案</button></div>
 <script nonce="${nonce}">
 const vscode = acquireVsCodeApi();
-document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({type:'refresh'}));
 document.getElementById('faq').addEventListener('click', () => vscode.postMessage({type:'faq'}));
+function refresh() { vscode.postMessage({type:'refresh'}); }
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag, attrs) { const el=document.createElementNS(NS,tag); for(const [key,val] of Object.entries(attrs)) el.setAttribute(key,String(val)); return el; }
 function resetTime(seconds) { return seconds ? new Date(seconds*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : 'Unknown'; }
@@ -116,18 +115,24 @@ function render(snapshot,error) {
   err.textContent=error||'';
   document.getElementById('help').hidden=!error && (!snapshot || snapshot.windows.length>0);
   content.replaceChildren(); content.className='';
-  if(!snapshot) { content.className='empty'; content.textContent=error?'尚无可显示的额度数据':'正在读取 Codex 额度…'; return; }
-  document.getElementById('title').textContent=snapshot.limitName || 'Codex 额度';
+  if(!snapshot) {
+    content.className='empty'; content.textContent=error?'尚无可显示的额度数据':'正在读取 Codex 额度…';
+    if(error) { const retry=document.createElement('button');retry.type='button';retry.textContent='重试';retry.addEventListener('click',refresh);content.appendChild(retry); }
+    return;
+  }
   const dashboard=document.createElement('div');dashboard.className='dashboard';
   const chart=document.createElement('div'); chart.className='chart';
-  const graphic=svg('svg',{viewBox:'0 0 280 280','aria-label':'外侧渐变粗圈中亮色表示剩余额度，内侧单色细圈表示剩余时间',role:'img'});
+  chart.setAttribute('role','button');chart.setAttribute('tabindex','0');chart.setAttribute('aria-label','点击圆环刷新 Codex 额度');chart.title='点击刷新';
+  chart.addEventListener('click',refresh);
+  chart.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();refresh();}});
+  const graphic=svg('svg',{viewBox:'0 0 280 280','aria-hidden':'true'});
   snapshot.windows.forEach((window,i)=>addRing(graphic,window,i===0?112:82,i===0?17:14));
   chart.appendChild(graphic);
   const center=document.createElement('div'); center.className='center';
   const num=document.createElement('div'); num.className='num'; num.textContent=snapshot.resetCredits===null?'—':String(snapshot.resetCredits);
+  const expiry=document.createElement('div');expiry.className='expiry';expiry.textContent='exp: '+expiryDate(snapshot.resetCreditExpiresAt);
   const caption=document.createElement('div'); caption.className='caption'; caption.textContent='resets';
-  center.append(num,caption);
-  const expiry=document.createElement('div');expiry.className='expiry';expiry.textContent='exp: '+expiryDate(snapshot.resetCreditExpiresAt);center.appendChild(expiry);
+  center.append(num,expiry,caption);
   chart.appendChild(center);dashboard.appendChild(chart);
   const legend=document.createElement('div');legend.className='legend';
   if(!snapshot.windows.length){ const empty=document.createElement('div');empty.className='empty';empty.textContent='No quota windows returned';legend.appendChild(empty); }
@@ -136,7 +141,7 @@ function render(snapshot,error) {
     row.style.borderLeftColor=quotaColor(window,window.remainingPercent/100);
     const name=document.createElement('div');name.className='name';name.textContent=windowName(window);
     const value=document.createElement('div');value.className='value';value.textContent=Math.round(window.remainingPercent)+'% remaining';
-    const reset=document.createElement('div');reset.className='detail';reset.textContent='Resets '+resetTime(window.resetsAt);
+    const reset=document.createElement('div');reset.className='detail';reset.textContent='Reset '+resetTime(window.resetsAt);
     row.append(name,value,reset);legend.appendChild(row);
   }
   dashboard.appendChild(legend);content.appendChild(dashboard);
