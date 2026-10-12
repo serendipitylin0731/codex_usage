@@ -82,3 +82,26 @@ export function timeRemainingPercent(window: QuotaWindow, now = Date.now()): num
   const remainingMilliseconds = window.resetsAt * 1000 - now;
   return Math.max(0, Math.min(100, remainingMilliseconds / (window.durationMinutes * 60_000) * 100));
 }
+
+/** Round the countdown up to the unit shown in the status bar. */
+export function remainingTimeLabel(window: QuotaWindow, now = Date.now()): string {
+  if (window.resetsAt === null) return '—';
+  const remainingMilliseconds = Math.max(0, window.resetsAt * 1000 - now);
+  if (window.kind === 'weekly' || (window.kind === 'other' && (window.durationMinutes ?? 0) >= 1440)) {
+    const totalHours = Math.ceil(remainingMilliseconds / 3_600_000);
+    return `${Math.floor(totalHours / 24)}d${totalHours % 24}h`;
+  }
+  const totalMinutes = Math.ceil(remainingMilliseconds / 60_000);
+  return `${Math.floor(totalMinutes / 60)}h${totalMinutes % 60}m`;
+}
+
+export function statusBarText(snapshot: QuotaSnapshot, now = Date.now()): string {
+  const weekly = snapshot.windows.find(window => window.kind === 'weekly');
+  const short = snapshot.windows.find(window => window.kind === 'fiveHour');
+  const displayed = [weekly, short].filter((window): window is QuotaWindow => window !== undefined);
+  if (!displayed.length) displayed.push(...snapshot.windows);
+  if (!displayed.length) return `Codex : —  reset: ${snapshot.resetCredits ?? '—'}`;
+  const times = displayed.map(window => remainingTimeLabel(window, now)).join(' | ');
+  const percentages = displayed.map(window => `${Math.round(window.remainingPercent)}%`).join(' | ');
+  return `${times} : ${percentages}  reset: ${snapshot.resetCredits ?? '—'}`;
+}

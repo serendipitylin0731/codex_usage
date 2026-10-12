@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { CodexClient } from './codexClient';
-import { parseQuotaResponse, QuotaSnapshot, QuotaWindow, remainingColor, timeRemainingPercent } from './model';
+import { parseQuotaResponse, QuotaSnapshot, remainingColor, statusBarText, timeRemainingPercent } from './model';
 import { QuotaView } from './view';
 
 let client: CodexClient | undefined;
@@ -25,15 +25,7 @@ export function activate(context: vscode.ExtensionContext): void {
       status.tooltip = lastError || '正在读取 Codex 额度';
       return;
     }
-    const weekly = snapshot.windows.find(window => window.kind === 'weekly');
-    const short = snapshot.windows.find(window => window.kind === 'fiveHour');
-    const displayed = [weekly, short].filter((window): window is QuotaWindow => window !== undefined);
-    if (!displayed.length) displayed.push(...snapshot.windows);
-    const labels = displayed.map(window => window.kind === 'weekly' ? '7d' : window.kind === 'fiveHour' ? '5h' : window.label);
-    const percentages = displayed.map(window => `${Math.round(window.remainingPercent)}%`);
-    status.text = displayed.length
-      ? `${labels.join('|')} : ${percentages.join('|')}  reset: ${snapshot.resetCredits ?? '—'}`
-      : `Codex : —  reset: ${snapshot.resetCredits ?? '—'}`;
+    status.text = statusBarText(snapshot);
     const lowest = [...snapshot.windows].sort((a, b) => a.remainingPercent - b.remainingPercent)[0];
     status.color = lastError ? new vscode.ThemeColor('statusBarItem.warningForeground') : lowest ? remainingColor(lowest) : undefined;
     const tooltip = new vscode.MarkdownString();
@@ -97,7 +89,13 @@ export function activate(context: vscode.ExtensionContext): void {
       void refresh();
     }
   }));
+  const countdownTimer = setInterval(() => {
+    if (!snapshot) return;
+    const text = statusBarText(snapshot);
+    if (status.text !== text) status.text = text;
+  }, 1000);
   context.subscriptions.push({ dispose: () => {
+    clearInterval(countdownTimer);
     if (timer) clearInterval(timer);
     client?.dispose();
   }});

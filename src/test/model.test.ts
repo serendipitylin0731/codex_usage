@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseQuotaResponse, timeRemainingPercent } from '../model';
+import { parseQuotaResponse, remainingTimeLabel, statusBarText, timeRemainingPercent } from '../model';
 
 test('prefers requested bucket and orders weekly ring outside five-hour ring', () => {
   const result = parseQuotaResponse({
@@ -31,4 +31,19 @@ test('time remaining is derived from reset time and window length', () => {
   assert.equal(timeRemainingPercent(window, 9_000_000), 50);
   assert.equal(timeRemainingPercent(window, 20_000_000), 0);
   assert.equal(timeRemainingPercent({ ...window, resetsAt: null }), null);
+});
+
+test('status countdown rounds weekly hours and five-hour minutes upward', () => {
+  const weekly = { kind: 'weekly' as const, label: '7 天', durationMinutes: 10080, usedPercent: 12, remainingPercent: 88, resetsAt: 100_000 };
+  const fiveHour = { kind: 'fiveHour' as const, label: '5 小时', durationMinutes: 300, usedPercent: 38, remainingPercent: 62, resetsAt: 100_000 };
+  const now = 100_000_000 - (26 * 3_600_000 + 1);
+  assert.equal(remainingTimeLabel(weekly, now), '1d3h');
+  assert.equal(remainingTimeLabel(weekly, now + 1), '1d2h');
+  assert.equal(remainingTimeLabel(fiveHour, 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1)), '2h15m');
+  assert.equal(remainingTimeLabel(fiveHour, 100_000_000 - (2 * 3_600_000 + 14 * 60_000)), '2h14m');
+  assert.equal(remainingTimeLabel(weekly, 100_000_001), '0d0h');
+  assert.equal(remainingTimeLabel({ ...fiveHour, resetsAt: null }, now), '—');
+
+  const snapshot = { limitId: 'codex', limitName: 'Codex', windows: [weekly, fiveHour], resetCredits: 3, fetchedAt: now };
+  assert.equal(statusBarText(snapshot, 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1)), '0d3h | 2h15m : 88% | 62%  reset: 3');
 });
