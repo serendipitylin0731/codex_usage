@@ -48,10 +48,10 @@ test('status countdown rounds weekly hours and five-hour minutes upward', () => 
   const displayTime = 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1);
   assert.deepEqual(statusBarParts(snapshot, displayTime), [
     { text: '0d3h / 7d : 88%', kind: 'weekly' },
-    { text: '      2h15m / 5h : 62%', kind: 'fiveHour' },
-    { text: '   reset: 3', kind: 'summary' }
+    { text: '2h15m / 5h : 62%', kind: 'fiveHour' },
+    { text: 'reset: 3', kind: 'summary' }
   ]);
-  assert.equal(statusBarText(snapshot, displayTime), '0d3h / 7d : 88%      2h15m / 5h : 62%   reset: 3');
+  assert.equal(statusBarText(snapshot, displayTime), '0d3h / 7d : 88% 2h15m / 5h : 62% reset: 3');
   assert.deepEqual(statusBarParts({ ...snapshot, windows: [fiveHour] }, displayTime).map(part => part.kind), ['fiveHour', 'summary']);
   assert.equal(statusBarParts({ ...snapshot, windows: [] }, displayTime).length, 1);
 });

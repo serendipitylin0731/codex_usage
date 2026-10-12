@@ -30,7 +30,7 @@ export function activate(context: vscode.ExtensionContext): void {
     items.forEach((item, index) => {
       const part = parts[index];
       if (!part) { item.hide(); return; }
-      item.text = part.text.replace(/^ +/, spaces => '\u00a0'.repeat(spaces.length));
+      item.text = part.text;
       item.color = part.kind === 'weekly' ? light ? '#a4465a' : '#f3c1b9'
         : part.kind === 'fiveHour' ? light ? '#276f9e' : '#a8d7ec'
           : light ? new vscode.ThemeColor('statusBar.foreground') : '#ffffff';
