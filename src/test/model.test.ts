@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseQuotaResponse, remainingTimeLabel, statusBarText, timeRemainingPercent } from '../model';
+import { parseQuotaResponse, remainingTimeLabel, statusBarParts, statusBarText, timeRemainingPercent } from '../model';
 
 test('prefers requested bucket and orders weekly ring outside five-hour ring', () => {
   const result = parseQuotaResponse({
@@ -45,5 +45,13 @@ test('status countdown rounds weekly hours and five-hour minutes upward', () => 
   assert.equal(remainingTimeLabel({ ...fiveHour, resetsAt: null }, now), '—');
 
   const snapshot = { limitId: 'codex', limitName: 'Codex', windows: [weekly, fiveHour], resetCredits: 3, fetchedAt: now };
-  assert.equal(statusBarText(snapshot, 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1)), '0d3h | 2h15m : 88% | 62%  reset: 3');
+  const displayTime = 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1);
+  assert.deepEqual(statusBarParts(snapshot, displayTime), [
+    { text: '0d3h', kind: 'weekly' },
+    { text: ' | 2h15m', kind: 'fiveHour' },
+    { text: ' : 88% | 62%  reset: 3', kind: 'summary' }
+  ]);
+  assert.equal(statusBarText(snapshot, displayTime), '0d3h | 2h15m : 88% | 62%  reset: 3');
+  assert.deepEqual(statusBarParts({ ...snapshot, windows: [fiveHour] }, displayTime).map(part => part.kind), ['fiveHour', 'summary']);
+  assert.equal(statusBarParts({ ...snapshot, windows: [] }, displayTime).length, 1);
 });

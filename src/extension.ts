@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { CodexClient } from './codexClient';
-import { parseQuotaResponse, QuotaSnapshot, remainingColor, statusBarText, timeRemainingPercent } from './model';
+import { parseQuotaResponse, QuotaSnapshot, remainingColor, statusBarParts, timeRemainingPercent } from './model';
 import { QuotaView } from './view';
 
 let client: CodexClient | undefined;
@@ -10,24 +10,47 @@ let snapshot: QuotaSnapshot | null = null;
 let lastError: string | null = null;
 
 export function activate(context: vscode.ExtensionContext): void {
-  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 102);
+  const shortStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101);
+  const detailsStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   status.name = 'Codex 额度';
-  status.command = 'codexQuota.show';
+  shortStatus.name = 'Codex 短周期倒计时';
+  detailsStatus.name = 'Codex 额度摘要';
+  for (const item of [status, shortStatus, detailsStatus]) item.command = 'codexQuota.show';
   status.text = '$(sync~spin) Codex 额度';
   status.tooltip = '正在读取 Codex 额度';
   status.show();
 
+  const updateStatusText = () => {
+    if (!snapshot) return;
+    const parts = statusBarParts(snapshot);
+    const lowest = [...snapshot.windows].sort((a, b) => a.remainingPercent - b.remainingPercent)[0];
+    const light = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Light
+      || vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrastLight;
+    const items = [status, shortStatus, detailsStatus];
+    items.forEach((item, index) => {
+      const part = parts[index];
+      if (!part) { item.hide(); return; }
+      item.text = part.text;
+      item.color = part.kind === 'weekly' ? light ? '#a4465a' : '#f3c1b9'
+        : part.kind === 'fiveHour' ? light ? '#276f9e' : '#a8d7ec'
+          : lastError ? new vscode.ThemeColor('statusBarItem.warningForeground')
+            : lowest ? remainingColor(lowest) : undefined;
+      item.show();
+    });
+  };
+
   const render = () => {
     view.update(snapshot, lastError);
     if (!snapshot) {
+      shortStatus.hide();
+      detailsStatus.hide();
       status.text = lastError ? '$(warning) Codex 额度' : '$(sync~spin) Codex 额度';
       status.color = lastError ? new vscode.ThemeColor('statusBarItem.warningForeground') : undefined;
       status.tooltip = lastError || '正在读取 Codex 额度';
       return;
     }
-    status.text = statusBarText(snapshot);
-    const lowest = [...snapshot.windows].sort((a, b) => a.remainingPercent - b.remainingPercent)[0];
-    status.color = lastError ? new vscode.ThemeColor('statusBarItem.warningForeground') : lowest ? remainingColor(lowest) : undefined;
+    updateStatusText();
     const tooltip = new vscode.MarkdownString();
     tooltip.appendMarkdown(`**${snapshot.limitName.replace(/[\\`*_{}\[\]()#+.!|>~-]/g, '\\$&')}**\n\n`);
     for (const window of snapshot.windows) {
@@ -38,7 +61,7 @@ export function activate(context: vscode.ExtensionContext): void {
     tooltip.appendText(`可用重置次数：${snapshot.resetCredits ?? '未知'}\n`);
     tooltip.appendText(`上次更新：${new Date(snapshot.fetchedAt).toLocaleTimeString()}`);
     if (lastError) tooltip.appendText(`\n刷新失败：${lastError}`);
-    status.tooltip = tooltip;
+    for (const item of [status, shortStatus, detailsStatus]) item.tooltip = tooltip;
   };
 
   const refresh = (): Promise<void> => {
@@ -82,7 +105,7 @@ export function activate(context: vscode.ExtensionContext): void {
     else void refresh();
   };
 
-  context.subscriptions.push(status);
+  context.subscriptions.push(status, shortStatus, detailsStatus);
   context.subscriptions.push(vscode.window.registerWebviewViewProvider('codexQuota.view', view, {
     webviewOptions: { retainContextWhenHidden: true }
   }));
@@ -99,10 +122,9 @@ export function activate(context: vscode.ExtensionContext): void {
       void refresh();
     }
   }));
+  context.subscriptions.push(vscode.window.onDidChangeActiveColorTheme(() => updateStatusText()));
   const countdownTimer = setInterval(() => {
-    if (!snapshot) return;
-    const text = statusBarText(snapshot);
-    if (status.text !== text) status.text = text;
+    updateStatusText();
   }, 10_000);
   context.subscriptions.push({ dispose: () => {
     clearInterval(countdownTimer);

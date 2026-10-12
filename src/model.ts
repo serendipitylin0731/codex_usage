@@ -95,13 +95,20 @@ export function remainingTimeLabel(window: QuotaWindow, now = Date.now()): strin
   return `${Math.floor(totalMinutes / 60)}h${totalMinutes % 60}m`;
 }
 
-export function statusBarText(snapshot: QuotaSnapshot, now = Date.now()): string {
+export function statusBarParts(snapshot: QuotaSnapshot, now = Date.now()): { text: string; kind: QuotaWindow['kind'] | 'summary' }[] {
   const weekly = snapshot.windows.find(window => window.kind === 'weekly');
   const short = snapshot.windows.find(window => window.kind === 'fiveHour');
   const displayed = [weekly, short].filter((window): window is QuotaWindow => window !== undefined);
   if (!displayed.length) displayed.push(...snapshot.windows);
-  if (!displayed.length) return `Codex : —  reset: ${snapshot.resetCredits ?? '—'}`;
-  const times = displayed.map(window => remainingTimeLabel(window, now)).join(' | ');
+  if (!displayed.length) return [{ text: `Codex : —  reset: ${snapshot.resetCredits ?? '—'}`, kind: 'summary' }];
+  const times = displayed.map((window, index) => ({
+    text: `${index ? ' | ' : ''}${remainingTimeLabel(window, now)}`,
+    kind: window.kind
+  }));
   const percentages = displayed.map(window => `${Math.round(window.remainingPercent)}%`).join(' | ');
-  return `${times} : ${percentages}  reset: ${snapshot.resetCredits ?? '—'}`;
+  return [...times, { text: ` : ${percentages}  reset: ${snapshot.resetCredits ?? '—'}`, kind: 'summary' }];
+}
+
+export function statusBarText(snapshot: QuotaSnapshot, now = Date.now()): string {
+  return statusBarParts(snapshot, now).map(part => part.text).join('');
 }
