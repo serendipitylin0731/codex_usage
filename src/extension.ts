@@ -93,7 +93,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!snapshot) return;
     const text = statusBarText(snapshot);
     if (status.text !== text) status.text = text;
-  }, 1000);
+  }, 10_000);
   context.subscriptions.push({ dispose: () => {
     clearInterval(countdownTimer);
     if (timer) clearInterval(timer);

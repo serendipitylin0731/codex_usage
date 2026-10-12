@@ -51,9 +51,14 @@ export class QuotaView implements vscode.WebviewViewProvider {
   .center .sub { color: var(--vscode-descriptionForeground); font-size: 8px; margin-top: 2px; text-align: center; }
   .legend { display: grid; gap: 8px; min-width: 0; }
   .row { min-width: 0; padding: 2px 0 2px 6px; border-left: 3px solid; }
+  .row.weekly { color: #f3c1b9; }
+  .row.fiveHour { color: #a8d7ec; }
+  body.vscode-light .row.weekly { color: #a4465a; }
+  body.vscode-light .row.fiveHour { color: #276f9e; }
   .name { font-weight: 650; font-size: 11px; }
   .value { font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .detail { color: var(--vscode-descriptionForeground); font-size: 10px; font-variant-numeric: tabular-nums; line-height: 1.35; margin-top: 2px; overflow-wrap: anywhere; }
+  .row.weekly .detail, .row.fiveHour .detail { color: inherit; }
   .error { color: var(--vscode-errorForeground); margin-top: 10px; font-size: 11px; line-height: 1.5; }
   .empty { text-align: center; padding: 12px 4px; color: var(--vscode-descriptionForeground); line-height: 1.5; }
   @media (max-width: 220px) { .dashboard { grid-template-columns: 88px minmax(0, 1fr); gap: 4px; } }
@@ -124,7 +129,7 @@ function render(snapshot,error) {
   const legend=document.createElement('div');legend.className='legend';
   if(!snapshot.windows.length){ const empty=document.createElement('div');empty.className='empty';empty.textContent='该账户未返回时间窗口额度';legend.appendChild(empty); }
   for(const window of snapshot.windows){
-    const row=document.createElement('div');row.className='row';
+    const row=document.createElement('div');row.className='row '+window.kind;
     row.style.borderLeftColor=quotaColor(window,window.remainingPercent/100);
     const name=document.createElement('div');name.className='name';name.textContent=window.label+'额度';
     const value=document.createElement('div');value.className='value';value.textContent='额度剩余 '+Math.round(window.remainingPercent)+'%';
