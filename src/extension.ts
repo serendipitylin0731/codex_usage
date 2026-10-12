@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { CodexClient } from './codexClient';
 import { parseQuotaResponse, QuotaSnapshot, statusBarParts } from './model';
+import { RefreshPolicy, RETRY_INTERVAL_MS } from './refreshPolicy';
 import { QuotaView } from './view';
 
 let client: CodexClient | undefined;
@@ -8,8 +9,11 @@ let timer: NodeJS.Timeout | undefined;
 let inFlight: Promise<void> | undefined;
 let snapshot: QuotaSnapshot | null = null;
 let lastError: string | null = null;
+let generation = 0;
 
 export function activate(context: vscode.ExtensionContext): void {
+  const refreshPolicy = new RefreshPolicy();
+  let normalRefreshMs = 30_000;
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 102);
   const shortStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101);
   const detailsStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -61,20 +65,36 @@ export function activate(context: vscode.ExtensionContext): void {
     for (const item of [status, shortStatus, detailsStatus]) item.tooltip = tooltip;
   };
 
-  const refresh = (): Promise<void> => {
+  const schedule = (delayMs: number, scheduledRetry: boolean): void => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = undefined;
+      void refresh(scheduledRetry);
+    }, delayMs);
+  };
+
+  const refresh = (scheduledRetry = false): Promise<void> => {
     if (inFlight) return inFlight;
+    const requestGeneration = generation;
+    const requestClient = client!;
     inFlight = (async () => {
       try {
         const config = vscode.workspace.getConfiguration('codexQuota');
-        const response = await client!.readRateLimits();
+        const response = await requestClient.readRateLimits();
         const parsed = parseQuotaResponse(response, config.get<string>('limitId', 'codex'));
         if (!parsed) throw new Error('Codex 未返回可识别的额度数据');
+        if (requestGeneration !== generation) return;
         snapshot = parsed;
+        refreshPolicy.reset();
         lastError = null;
+        schedule(normalRefreshMs, false);
       } catch (error) {
-        lastError = error instanceof Error ? error.message : String(error);
+        if (requestGeneration !== generation) return;
+        refreshPolicy.fail(error instanceof Error ? error.message : String(error), scheduledRetry);
+        lastError = refreshPolicy.visibleError;
+        schedule(RETRY_INTERVAL_MS, true);
       } finally {
-        render();
+        if (requestGeneration === generation) render();
       }
     })().finally(() => { inFlight = undefined; });
     return inFlight;
@@ -91,13 +111,19 @@ export function activate(context: vscode.ExtensionContext): void {
   };
   const view = new QuotaView(() => { void refresh(); }, () => { void openFaq(); });
   const start = () => {
+    generation++;
     const previousRefresh = inFlight;
-    if (timer) clearInterval(timer);
+    if (timer) clearTimeout(timer);
     client?.dispose();
+    refreshPolicy.reset();
+    lastError = null;
+    render();
     const config = vscode.workspace.getConfiguration('codexQuota');
-    client = new CodexClient(config.get<string>('codexPath', 'codex'), () => { void refresh(); });
+    client = new CodexClient(config.get<string>('codexPath', 'codex'), () => {
+      if (!refreshPolicy.isRetrying) void refresh();
+    });
     const seconds = Math.min(600, Math.max(15, config.get<number>('refreshIntervalSeconds', 30)));
-    timer = setInterval(() => { void refresh(); }, seconds * 1000);
+    normalRefreshMs = seconds * 1000;
     if (previousRefresh) void previousRefresh.finally(() => refresh());
     else void refresh();
   };
@@ -124,14 +150,16 @@ export function activate(context: vscode.ExtensionContext): void {
     updateStatusText();
   }, 10_000);
   context.subscriptions.push({ dispose: () => {
+    generation++;
     clearInterval(countdownTimer);
-    if (timer) clearInterval(timer);
+    if (timer) clearTimeout(timer);
     client?.dispose();
   }});
   start();
 }
 
 export function deactivate(): void {
-  if (timer) clearInterval(timer);
+  generation++;
+  if (timer) clearTimeout(timer);
   client?.dispose();
 }
