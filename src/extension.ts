@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { CodexClient } from './codexClient';
-import { parseQuotaResponse, QuotaSnapshot, remainingColor, statusBarParts, timeRemainingPercent } from './model';
+import { parseQuotaResponse, QuotaSnapshot, statusBarParts } from './model';
 import { QuotaView } from './view';
 
 let client: CodexClient | undefined;
@@ -24,18 +24,16 @@ export function activate(context: vscode.ExtensionContext): void {
   const updateStatusText = () => {
     if (!snapshot) return;
     const parts = statusBarParts(snapshot);
-    const lowest = [...snapshot.windows].sort((a, b) => a.remainingPercent - b.remainingPercent)[0];
     const light = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Light
       || vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrastLight;
     const items = [status, shortStatus, detailsStatus];
     items.forEach((item, index) => {
       const part = parts[index];
       if (!part) { item.hide(); return; }
-      item.text = part.text;
+      item.text = part.text.replace(/^ +/, spaces => '\u00a0'.repeat(spaces.length));
       item.color = part.kind === 'weekly' ? light ? '#a4465a' : '#f3c1b9'
         : part.kind === 'fiveHour' ? light ? '#276f9e' : '#a8d7ec'
-          : lastError ? new vscode.ThemeColor('statusBarItem.warningForeground')
-            : lowest ? remainingColor(lowest) : undefined;
+          : light ? new vscode.ThemeColor('statusBar.foreground') : '#ffffff';
       item.show();
     });
   };
@@ -55,8 +53,7 @@ export function activate(context: vscode.ExtensionContext): void {
     tooltip.appendMarkdown(`**${snapshot.limitName.replace(/[\\`*_{}\[\]()#+.!|>~-]/g, '\\$&')}**\n\n`);
     for (const window of snapshot.windows) {
       const reset = window.resetsAt ? new Date(window.resetsAt * 1000).toLocaleString() : '未知';
-      const time = timeRemainingPercent(window);
-      tooltip.appendText(`${window.label}：额度剩余 ${Math.round(window.remainingPercent)}%，时间剩余 ${time === null ? '未知' : `${Math.round(time)}%`}，重置 ${reset}\n`);
+      tooltip.appendText(`${window.label}：额度剩余 ${Math.round(window.remainingPercent)}%，重置 ${reset}\n`);
     }
     tooltip.appendText(`可用重置次数：${snapshot.resetCredits ?? '未知'}\n`);
     tooltip.appendText(`上次更新：${new Date(snapshot.fetchedAt).toLocaleTimeString()}`);

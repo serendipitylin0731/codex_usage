@@ -100,13 +100,12 @@ export function statusBarParts(snapshot: QuotaSnapshot, now = Date.now()): { tex
   const short = snapshot.windows.find(window => window.kind === 'fiveHour');
   const displayed = [weekly, short].filter((window): window is QuotaWindow => window !== undefined);
   if (!displayed.length) displayed.push(...snapshot.windows);
-  if (!displayed.length) return [{ text: `Codex : —  reset: ${snapshot.resetCredits ?? '—'}`, kind: 'summary' }];
+  if (!displayed.length) return [{ text: `Codex : —   reset: ${snapshot.resetCredits ?? '—'}`, kind: 'summary' }];
   const times = displayed.map((window, index) => ({
-    text: `${index ? ' | ' : ''}${remainingTimeLabel(window, now)}`,
+    text: `${index ? '      ' : ''}${remainingTimeLabel(window, now)} / ${window.kind === 'weekly' ? '7d' : window.kind === 'fiveHour' ? '5h' : window.label} : ${Math.round(window.remainingPercent)}%`,
     kind: window.kind
   }));
-  const percentages = displayed.map(window => `${Math.round(window.remainingPercent)}%`).join(' | ');
-  return [...times, { text: ` : ${percentages}  reset: ${snapshot.resetCredits ?? '—'}`, kind: 'summary' }];
+  return [...times, { text: `   reset: ${snapshot.resetCredits ?? '—'}`, kind: 'summary' }];
 }
 
 export function statusBarText(snapshot: QuotaSnapshot, now = Date.now()): string {
