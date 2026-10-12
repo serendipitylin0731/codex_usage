@@ -6,7 +6,7 @@ export class QuotaView implements vscode.WebviewViewProvider {
   private snapshot: QuotaSnapshot | null = null;
   private error: string | null = null;
 
-  constructor(private readonly refresh: () => void) {}
+  constructor(private readonly refresh: () => void, private readonly openFaq: () => void) {}
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
@@ -14,6 +14,7 @@ export class QuotaView implements vscode.WebviewViewProvider {
     view.webview.html = this.html(view.webview);
     view.webview.onDidReceiveMessage(message => {
       if (message?.type === 'refresh') this.refresh();
+      if (message?.type === 'faq') this.openFaq();
       if (message?.type === 'ready') this.send();
     });
     this.send();
@@ -60,15 +61,19 @@ export class QuotaView implements vscode.WebviewViewProvider {
   .detail { color: var(--vscode-descriptionForeground); font-size: 10px; font-variant-numeric: tabular-nums; line-height: 1.35; margin-top: 2px; overflow-wrap: anywhere; }
   .row.weekly .detail, .row.fiveHour .detail { color: inherit; }
   .error { color: var(--vscode-errorForeground); margin-top: 10px; font-size: 11px; line-height: 1.5; }
+  .help { margin-top: 8px; }
+  .help[hidden] { display: none; }
   .empty { text-align: center; padding: 12px 4px; color: var(--vscode-descriptionForeground); line-height: 1.5; }
   @media (max-width: 220px) { .dashboard { grid-template-columns: 88px minmax(0, 1fr); gap: 4px; } }
 </style></head><body>
 <div class="top"><h1 id="title">Codex 额度</h1><button id="refresh" title="立即刷新">↻</button></div>
 <div id="content" class="empty">正在读取 Codex 额度…</div>
 <div id="error" class="error" role="status"></div>
+<div id="help" class="help" hidden><button id="faq" type="button">常见问题与解决方案</button></div>
 <script nonce="${nonce}">
 const vscode = acquireVsCodeApi();
 document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({type:'refresh'}));
+document.getElementById('faq').addEventListener('click', () => vscode.postMessage({type:'faq'}));
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag, attrs) { const el=document.createElementNS(NS,tag); for(const [key,val] of Object.entries(attrs)) el.setAttribute(key,String(val)); return el; }
 function resetTime(seconds) { return seconds ? new Date(seconds*1000).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : '未知'; }
@@ -112,6 +117,7 @@ function addRing(root, window, radius, width) {
 function render(snapshot,error) {
   const content=document.getElementById('content'), err=document.getElementById('error');
   err.textContent=error||'';
+  document.getElementById('help').hidden=!error && (!snapshot || snapshot.windows.length>0);
   content.replaceChildren(); content.className='';
   if(!snapshot) { content.className='empty'; content.textContent=error?'尚无可显示的额度数据':'正在读取 Codex 额度…'; return; }
   document.getElementById('title').textContent=snapshot.limitName || 'Codex 额度';

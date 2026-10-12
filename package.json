@@ -2,10 +2,14 @@
   "name": "codex-quota-rings",
   "displayName": "Codex Quota Rings",
   "description": "在 VS Code 状态栏和资源管理器查看 Codex 额度、时间进度与重置次数",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "publisher": "local-codex-tools",
   "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/serendipitylin0731/codex_usage.git"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -29,6 +33,10 @@
       {
         "command": "codexQuota.show",
         "title": "Codex 额度：显示圆环"
+      },
+      {
+        "command": "codexQuota.faq",
+        "title": "Codex 额度：常见问题与解决方案"
       }
     ],
     "views": {
@@ -67,7 +75,7 @@
   "scripts": {
     "compile": "tsc -p .",
     "test": "npm run compile && node --test dist/test/*.test.js",
-    "package": "npm run compile && vsce package --no-dependencies --allow-missing-repository -o codex-quota-rings-0.4.8.vsix"
+    "package": "npm run compile && node -e \"require('node:fs').mkdirSync('release', { recursive: true })\" && vsce package --no-dependencies --allow-missing-repository -o release/codex-quota-rings-0.4.9.vsix"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",

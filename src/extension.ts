@@ -60,7 +60,16 @@ export function activate(context: vscode.ExtensionContext): void {
     return inFlight;
   };
 
-  const view = new QuotaView(() => { void refresh(); });
+  const openFaq = async (): Promise<void> => {
+    const uri = vscode.Uri.joinPath(context.extensionUri, 'FAQ.md');
+    try {
+      await vscode.commands.executeCommand('markdown.showPreview', uri);
+    } catch {
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+    }
+  };
+  const view = new QuotaView(() => { void refresh(); }, () => { void openFaq(); });
   const start = () => {
     const previousRefresh = inFlight;
     if (timer) clearInterval(timer);
@@ -78,6 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
     webviewOptions: { retainContextWhenHidden: true }
   }));
   context.subscriptions.push(vscode.commands.registerCommand('codexQuota.refresh', () => refresh()));
+  context.subscriptions.push(vscode.commands.registerCommand('codexQuota.faq', () => openFaq()));
   context.subscriptions.push(vscode.commands.registerCommand('codexQuota.show', async () => {
     await vscode.commands.executeCommand('workbench.view.explorer');
     await vscode.commands.executeCommand('codexQuota.view.focus');
