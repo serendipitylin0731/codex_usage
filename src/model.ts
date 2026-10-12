@@ -12,6 +12,7 @@ export interface QuotaSnapshot {
   limitName: string;
   windows: QuotaWindow[];
   resetCredits: number | null;
+  resetCreditExpiresAt: number | null;
   fetchedAt: number;
 }
 
@@ -59,12 +60,19 @@ export function parseQuotaResponse(raw: unknown, preferredLimitId: string, now =
     .sort((a, b) => (b.durationMinutes ?? 0) - (a.durationMinutes ?? 0));
   const credits = object(response.rateLimitResetCredits);
   const count = number(credits?.availableCount);
+  const availableExpiryTimes = Array.isArray(credits?.credits)
+    ? credits.credits.map(object)
+      .filter((credit): credit is RecordValue => credit !== null && (credit.status === 'available' || credit.status === undefined))
+      .map(credit => number(credit.expiresAt))
+      .filter((expiresAt): expiresAt is number => expiresAt !== null && expiresAt * 1000 > now)
+    : [];
   return {
     limitId: typeof selected.limitId === 'string' ? selected.limitId : preferredLimitId,
     limitName: typeof selected.limitName === 'string' && selected.limitName
       ? selected.limitName : 'Codex',
     windows,
     resetCredits: count === null ? null : Math.max(0, Math.floor(count)),
+    resetCreditExpiresAt: count === 0 || !availableExpiryTimes.length ? null : Math.min(...availableExpiryTimes),
     fetchedAt: now
   };
 }

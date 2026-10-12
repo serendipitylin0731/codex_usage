@@ -12,6 +12,7 @@ test('prefers requested bucket and orders weekly ring outside five-hour ring', (
     rateLimitResetCredits: { availableCount: 3 }
   }, 'codex', 1234);
   assert.equal(result?.resetCredits, 3);
+  assert.equal(result?.resetCreditExpiresAt, null);
   assert.deepEqual(result?.windows.map(window => [window.kind, window.remainingPercent]), [['weekly', 92], ['fiveHour', 50]]);
   assert.equal(result?.fetchedAt, 1234);
 });
@@ -23,6 +24,25 @@ test('single-window account and unavailable reset credits remain distinct from z
   assert.equal(result?.resetCredits, null);
   const zero = parseQuotaResponse({ rateLimits: {}, rateLimitResetCredits: { availableCount: 0 } }, 'codex');
   assert.equal(zero?.resetCredits, 0);
+  assert.equal(zero?.resetCreditExpiresAt, null);
+});
+
+test('uses the nearest known expiration of an available reset credit', () => {
+  const result = parseQuotaResponse({
+    rateLimits: { primary: { usedPercent: 25, windowDurationMins: 300 } },
+    rateLimitResetCredits: {
+      availableCount: 4,
+      credits: [
+        { status: 'available', expiresAt: 2_000 },
+        { status: 'consumed', expiresAt: 1_100 },
+        { status: 'available', expiresAt: 1_500 },
+        { status: 'available', expiresAt: 900 },
+        { status: 'available', expiresAt: null }
+      ]
+    }
+  }, 'codex', 1_000_000);
+  assert.equal(result?.resetCredits, 4);
+  assert.equal(result?.resetCreditExpiresAt, 1_500);
 });
 
 test('time remaining is derived from reset time and window length', () => {
@@ -44,7 +64,7 @@ test('status countdown rounds weekly hours and five-hour minutes upward', () => 
   assert.equal(remainingTimeLabel(weekly, 100_000_001), '0d0h');
   assert.equal(remainingTimeLabel({ ...fiveHour, resetsAt: null }, now), '—');
 
-  const snapshot = { limitId: 'codex', limitName: 'Codex', windows: [weekly, fiveHour], resetCredits: 3, fetchedAt: now };
+  const snapshot = { limitId: 'codex', limitName: 'Codex', windows: [weekly, fiveHour], resetCredits: 3, resetCreditExpiresAt: null, fetchedAt: now };
   const displayTime = 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1);
   assert.deepEqual(statusBarParts(snapshot, displayTime), [
     { text: '0d3h / 7d : 88%', kind: 'weekly' },

@@ -18,7 +18,7 @@ export class CodexClient {
 
   async readRateLimits(): Promise<unknown> {
     await this.start();
-    return this.request('account/rateLimits/read', { excludeResetCreditDetails: true });
+    return this.request('account/rateLimits/read', { excludeResetCreditDetails: false });
   }
 
   private start(): Promise<void> {
@@ -47,7 +47,7 @@ export class CodexClient {
     child.on('close', () => this.closed(child, new Error('Codex app-server 已退出')));
 
     await this.request('initialize', {
-      clientInfo: { name: 'codex_quota_rings', title: 'Codex Quota Rings', version: '0.4.12' },
+      clientInfo: { name: 'codex_quota_rings', title: 'Codex Quota Rings', version: '0.4.13' },
       capabilities: null
     });
     this.write({ method: 'initialized' });
