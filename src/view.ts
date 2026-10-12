@@ -48,7 +48,7 @@ export class QuotaView implements vscode.WebviewViewProvider {
   .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
   .center .num { font-size: 22px; font-weight: 730; line-height: 1; letter-spacing: -.05em; }
   .center .caption { color: var(--vscode-descriptionForeground); margin-top: 3px; text-align: center; font-size: 9px; line-height: 1.1; }
-  .center .expiry { color: var(--vscode-descriptionForeground); font-size: 7px; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 2px; text-align: center; white-space: nowrap; }
+  .center .expiry { color: var(--vscode-descriptionForeground); font-size: 8px; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 2px; text-align: center; white-space: nowrap; }
   .legend { display: grid; gap: 8px; min-width: 0; }
   .row { min-width: 0; padding: 2px 0 2px 6px; border-left: 3px solid; }
   .name { font-weight: 650; font-size: 11px; }
@@ -71,7 +71,7 @@ function refresh() { vscode.postMessage({type:'refresh'}); }
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag, attrs) { const el=document.createElementNS(NS,tag); for(const [key,val] of Object.entries(attrs)) el.setAttribute(key,String(val)); return el; }
 function resetTime(seconds) { return seconds ? new Date(seconds*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : 'Unknown'; }
-function expiryDate(seconds) { if(seconds===null || !Number.isFinite(seconds)) return '—'; const date=new Date(seconds*1000); const pad=value=>String(value).padStart(2,'0'); return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate()); }
+function expiryDate(seconds) { if(seconds===null || !Number.isFinite(seconds)) return '—'; return new Date(seconds*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
 function windowName(window) { if(window.kind==='weekly') return '7-day quota'; if(window.kind==='fiveHour') return '5-hour quota'; const duration=window.durationMinutes; if(duration===null) return 'Quota'; if(duration>=1440) return Math.round(duration/1440)+'-day quota'; if(duration>=60) return Math.round(duration/60)+'-hour quota'; return Math.round(duration)+'-minute quota'; }
 function quotaColor(window, progress) {
   const stops=window.kind==='fiveHour' ? ['#4f8ec3','#94cfe6','#d8f1f7'] : ['#c5687c','#e0939a','#f3c1b9'];
