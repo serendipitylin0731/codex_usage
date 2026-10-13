@@ -56,11 +56,11 @@ export function activate(context: vscode.ExtensionContext): void {
     const tooltip = new vscode.MarkdownString();
     tooltip.appendMarkdown(`**${snapshot.limitName.replace(/[\\`*_{}\[\]()#+.!|>~-]/g, '\\$&')}**\n\n`);
     for (const window of snapshot.windows) {
-      const reset = window.resetsAt ? new Date(window.resetsAt * 1000).toLocaleString() : '未知';
+      const reset = window.resetsAt ? new Date(window.resetsAt * 1000).toLocaleString(undefined, { hourCycle: 'h23' }) : '未知';
       tooltip.appendText(`${window.label}：额度剩余 ${Math.round(window.remainingPercent)}%，重置 ${reset}\n`);
     }
     tooltip.appendText(`可用重置次数：${snapshot.resetCredits ?? '未知'}\n`);
-    tooltip.appendText(`上次更新：${new Date(snapshot.fetchedAt).toLocaleTimeString()}`);
+    tooltip.appendText(`上次更新：${new Date(snapshot.fetchedAt).toLocaleTimeString(undefined, { hourCycle: 'h23' })}`);
     if (lastError) tooltip.appendText(`\n刷新失败：${lastError}`);
     for (const item of [status, shortStatus, detailsStatus]) item.tooltip = tooltip;
   };

@@ -54,7 +54,9 @@ export class QuotaView implements vscode.WebviewViewProvider {
   .name { font-weight: 650; font-size: 11px; }
   .value { font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .detail { color: var(--vscode-descriptionForeground); font-size: 10px; font-variant-numeric: tabular-nums; line-height: 1.35; margin-top: 2px; overflow-wrap: anywhere; }
-  .error { color: var(--vscode-errorForeground); margin-top: 10px; font-size: 11px; line-height: 1.5; }
+  .error { color: #5d9e8b; margin-top: 4px; font-size: 11px; font-weight: 600; line-height: 1.1; text-align: center; }
+  .vscode-light .error { color: #2f705e; }
+  .error.has-error { color: var(--vscode-errorForeground); margin-top: 8px; font-weight: 400; line-height: 1.35; text-align: left; }
   .help { margin-top: 8px; }
   .help[hidden] { display: none; }
   .empty { text-align: center; padding: 12px 4px; color: var(--vscode-descriptionForeground); line-height: 1.5; }
@@ -62,7 +64,7 @@ export class QuotaView implements vscode.WebviewViewProvider {
   @media (max-width: 220px) { .dashboard { grid-template-columns: 88px minmax(0, 1fr); gap: 4px; } }
 </style></head><body>
 <div id="content" class="empty">正在读取 Codex 额度…</div>
-<div id="error" class="error" role="status"></div>
+<div id="error" class="error" role="status">Codex Quota</div>
 <div id="help" class="help" hidden><button id="faq" type="button">常见问题与解决方案</button></div>
 <script nonce="${nonce}">
 const vscode = acquireVsCodeApi();
@@ -70,7 +72,7 @@ document.getElementById('faq').addEventListener('click', () => vscode.postMessag
 function refresh() { vscode.postMessage({type:'refresh'}); }
 const NS = 'http://www.w3.org/2000/svg';
 function svg(tag, attrs) { const el=document.createElementNS(NS,tag); for(const [key,val] of Object.entries(attrs)) el.setAttribute(key,String(val)); return el; }
-function resetTime(seconds) { return seconds ? new Date(seconds*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : 'Unknown'; }
+function resetTime(seconds) { return seconds ? new Date(seconds*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}) : 'Unknown'; }
 function expiryDate(seconds) { if(seconds===null || !Number.isFinite(seconds)) return '—'; return new Date(seconds*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
 function windowName(window) { if(window.kind==='weekly') return '7-day quota'; if(window.kind==='fiveHour') return '5-hour quota'; const duration=window.durationMinutes; if(duration===null) return 'Quota'; if(duration>=1440) return Math.round(duration/1440)+'-day quota'; if(duration>=60) return Math.round(duration/60)+'-hour quota'; return Math.round(duration)+'-minute quota'; }
 function quotaColor(window, progress) {
@@ -112,7 +114,8 @@ function addRing(root, window, radius, width) {
 }
 function render(snapshot,error) {
   const content=document.getElementById('content'), err=document.getElementById('error');
-  err.textContent=error||'';
+  err.textContent=error||'Codex Quota';
+  err.classList.toggle('has-error',Boolean(error));
   document.getElementById('help').hidden=!error && (!snapshot || snapshot.windows.length>0);
   content.replaceChildren(); content.className='';
   if(!snapshot) {

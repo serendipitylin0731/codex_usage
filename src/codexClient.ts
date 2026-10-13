@@ -47,7 +47,7 @@ export class CodexClient {
     child.on('close', () => this.closed(child, new Error('Codex app-server 已退出')));
 
     await this.request('initialize', {
-      clientInfo: { name: 'codex_quota_rings', title: 'Codex Quota Rings', version: '0.4.16' },
+      clientInfo: { name: 'codex_quota_rings', title: 'Codex Quota Rings', version: '0.4.17' },
       capabilities: null
     });
     this.write({ method: 'initialized' });
