@@ -53,7 +53,7 @@ test('time remaining is derived from reset time and window length', () => {
   assert.equal(timeRemainingPercent({ ...window, resetsAt: null }), null);
 });
 
-test('status countdown rounds weekly hours and five-hour minutes upward', () => {
+test('status countdown changes units as days and hours reach zero', () => {
   const weekly = { kind: 'weekly' as const, label: '7 天', durationMinutes: 10080, usedPercent: 12, remainingPercent: 88, resetsAt: 100_000 };
   const fiveHour = { kind: 'fiveHour' as const, label: '5 小时', durationMinutes: 300, usedPercent: 38, remainingPercent: 62, resetsAt: 100_000 };
   const now = 100_000_000 - (26 * 3_600_000 + 1);
@@ -61,17 +61,23 @@ test('status countdown rounds weekly hours and five-hour minutes upward', () => 
   assert.equal(remainingTimeLabel(weekly, now + 1), '1d2h');
   assert.equal(remainingTimeLabel(fiveHour, 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1)), '2h15m');
   assert.equal(remainingTimeLabel(fiveHour, 100_000_000 - (2 * 3_600_000 + 14 * 60_000)), '2h14m');
-  assert.equal(remainingTimeLabel(weekly, 100_000_001), '0d0h');
+  assert.equal(remainingTimeLabel(weekly, 100_000_000 - 22 * 3_600_000), '22h0m');
+  assert.equal(remainingTimeLabel(weekly, 100_000_000 - (22 * 3_600_000 + 1)), '22h1m');
+  assert.equal(remainingTimeLabel(weekly, 100_000_000 - 59 * 60_000), '59m');
+  assert.equal(remainingTimeLabel(fiveHour, 100_000_000 - 59 * 60_000), '59m');
+  assert.equal(remainingTimeLabel(fiveHour, 100_000_000 - 1), '1m');
+  assert.equal(remainingTimeLabel(weekly, 100_000_001), '0m');
+  assert.equal(remainingTimeLabel(fiveHour, 100_000_001), '0m');
   assert.equal(remainingTimeLabel({ ...fiveHour, resetsAt: null }, now), '—');
 
   const snapshot = { limitId: 'codex', limitName: 'Codex', windows: [weekly, fiveHour], resetCredits: 3, resetCreditExpiresAt: null, fetchedAt: now };
   const displayTime = 100_000_000 - (2 * 3_600_000 + 14 * 60_000 + 1);
   assert.deepEqual(statusBarParts(snapshot, displayTime), [
-    { text: '0d3h / 7d : 88%', kind: 'weekly' },
+    { text: '2h15m / 7d : 88%', kind: 'weekly' },
     { text: '2h15m / 5h : 62%', kind: 'fiveHour' },
     { text: 'reset: 3', kind: 'summary' }
   ]);
-  assert.equal(statusBarText(snapshot, displayTime), '0d3h / 7d : 88% 2h15m / 5h : 62% reset: 3');
+  assert.equal(statusBarText(snapshot, displayTime), '2h15m / 7d : 88% 2h15m / 5h : 62% reset: 3');
   assert.deepEqual(statusBarParts({ ...snapshot, windows: [fiveHour] }, displayTime).map(part => part.kind), ['fiveHour', 'summary']);
   assert.equal(statusBarParts({ ...snapshot, windows: [] }, displayTime).length, 1);
 });

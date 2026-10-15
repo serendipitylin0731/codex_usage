@@ -91,16 +91,17 @@ export function timeRemainingPercent(window: QuotaWindow, now = Date.now()): num
   return Math.max(0, Math.min(100, remainingMilliseconds / (window.durationMinutes * 60_000) * 100));
 }
 
-/** Round the countdown up to the unit shown in the status bar. */
+/** Round the countdown up to the smallest unit shown in the status bar. */
 export function remainingTimeLabel(window: QuotaWindow, now = Date.now()): string {
   if (window.resetsAt === null) return '—';
   const remainingMilliseconds = Math.max(0, window.resetsAt * 1000 - now);
-  if (window.kind === 'weekly' || (window.kind === 'other' && (window.durationMinutes ?? 0) >= 1440)) {
-    const totalHours = Math.ceil(remainingMilliseconds / 3_600_000);
+  const totalMinutes = Math.ceil(remainingMilliseconds / 60_000);
+  if ((window.kind === 'weekly' || (window.kind === 'other' && (window.durationMinutes ?? 0) >= 1440)) && totalMinutes >= 1440) {
+    const totalHours = Math.ceil(totalMinutes / 60);
     return `${Math.floor(totalHours / 24)}d${totalHours % 24}h`;
   }
-  const totalMinutes = Math.ceil(remainingMilliseconds / 60_000);
-  return `${Math.floor(totalMinutes / 60)}h${totalMinutes % 60}m`;
+  if (totalMinutes >= 60) return `${Math.floor(totalMinutes / 60)}h${totalMinutes % 60}m`;
+  return `${totalMinutes}m`;
 }
 
 export function statusBarParts(snapshot: QuotaSnapshot, now = Date.now()): { text: string; kind: QuotaWindow['kind'] | 'summary' }[] {
