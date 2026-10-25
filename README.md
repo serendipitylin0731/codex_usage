@@ -1,5 +1,7 @@
 # Codex Quota Rings
 
+<img src="media/icon.png" alt="Codex Quota Rings logo" width="128">
+
 一个供自己使用的 VS Code 插件：状态栏常驻显示 Codex 剩余额度；小圆环和额度信息显示在资源管理器中。
 
 ## 显示方式
@@ -14,7 +16,7 @@
 
 先在运行 VS Code 工作区的同一环境里安装并登录 Codex CLI。插件调用本机 `codex app-server` 的 `account/rateLimits/read`，复用 CLI 登录态；无需复制令牌或配置 API key。
 
-在 VS Code 中运行 **Extensions: Install from VSIX...**，选择 `release/codex-quota-rings-0.4.18.vsix`，然后重新加载窗口。若使用 Remote SSH / WSL，请安装到远程工作区一侧，并确认远程终端能执行 `codex`。
+在 VS Code 中运行 **Extensions: Install from VSIX...**，选择 `release/codex-quota-rings-0.4.19.vsix`，然后重新加载窗口。若使用 Remote SSH / WSL，请安装到远程工作区一侧，并确认远程终端能执行 `codex`。
 
 **Codex 额度** 视图位于资源管理器中。点击状态栏摘要可切换到它；关闭资源管理器后状态栏摘要仍然可见。
 
